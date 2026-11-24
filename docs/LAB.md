@@ -4,7 +4,7 @@ Use this guide to collect Windows endpoint evidence, benchmark the hybrid model,
 
 ## 1. Verify Windows endpoint telemetry
 
-Use an isolated Windows 11 VM, a matching Sysmon package, and an enrolled Wazuh Windows agent. Before enrollment, confirm the guest can reach the intended agent ports on a private lab network. The Mac's existing Wazuh install publishes only the dashboard on loopback.
+Use an isolated Windows 11 VM, a matching Sysmon package, and an enrolled Wazuh Windows agent. Before enrollment, confirm the guest can reach the intended agent ports on a private lab network. The dashboard listens on Mac loopback. In the verified UTM run, two temporary SSH forwards on the private UTM bridge carried agent traffic and enrollment to the manager on TCP 1514 and 1515.
 
 Configure the agent to collect the Sysmon event channel:
 
@@ -24,6 +24,21 @@ python3 cli.py preview --source wazuh --alerts fixtures/wazuh_sample.jsonl \
 ```
 
 Record the source, UTC timestamp, Wazuh rule ID, mapped category, and pending draft outcome. Label synthetic records separately and redact identifying fields before publishing evidence.
+
+### Windows endpoint results
+
+On November 24, 2026, the Windows 11 ARM guest enrolled in the Wazuh manager. Microsoft Sysmon recorded process creation (event ID 1). During setup, the manager received a Sysmon alert for PowerShell launching SecEdit from the Windows SysWOW64 directory.
+
+| Observation | Verified result |
+| --- | --- |
+| Manager rule | 92066, executable in a suspicious location |
+| Alert ID | `1795552758.710364` |
+| Dashboard category | `suspicious_process` |
+| Rules / Qwen 3 1.7B second opinion | Both returned `needs_review` |
+| First suggested investigation step | Inspect the parent process, child process, and command line |
+| Human verdict | Pending at the time of capture |
+
+This live case verifies collection and drafting. Its ground truth has not been independently established, so it is excluded from the accuracy and timing studies.
 
 ## 2. Run the hybrid benchmark
 

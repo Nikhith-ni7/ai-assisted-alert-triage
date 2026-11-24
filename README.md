@@ -2,7 +2,7 @@
 
 A Python CLI and local dashboard that triages Wazuh and Microsoft Sentinel alerts. **Decision rules set the verdict; a language model writes the triage note, picks investigation steps and gives a second opinion** that is flagged when it disagrees. An analyst approves or replaces every verdict. The tool makes no SIEM changes.
 
-Built and run on macOS with live Wazuh manager alerts and synthetic benchmark data. Windows VM agent and Sysmon verification remain pending. See the [lab validation guide](docs/LAB.md).
+Verified on macOS with a Windows 11 ARM endpoint in UTM. Wazuh collected a Sysmon alert for PowerShell launching SecEdit. The dashboard rules and local Qwen model both returned `needs_review`. [Windows endpoint results](docs/LAB.md#windows-endpoint-results)
 
 ## How it works
 
