@@ -10,7 +10,7 @@ import sys
 from time import perf_counter
 
 from services import Reputation, ServiceError, llm_draft, ollama_draft, sentinel_alerts, wazuh_alert, wazuh_docker_alerts
-from triage import VERDICTS, baseline, clean_reputation, combine_hybrid_draft, compare_reviews, evidence, load_cases, normalize, read_jsonl, score, score_assist
+from triage import VERDICTS, baseline, clean_reputation, combine_hybrid_draft, evidence, load_cases, normalize, read_jsonl, score, score_assist
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "labeled_alerts.jsonl"
 ENGINES = ("baseline", "ollama", "llm", "hybrid")
@@ -73,7 +73,6 @@ def benchmark(args):
     if args.model and args.engine != "baseline":
         report["model"] = args.model
     report["average_draft_seconds"] = (perf_counter() - started) / len(cases)
-    report["human_time_saved"] = None
     report["dataset"] = Path(args.fixtures).stem
     print(json.dumps(report, indent=2))
 
@@ -134,6 +133,7 @@ def review(args):
     recorded = 0
     seen = set()
     # Exclusive creation prevents replacing or mixing two review sessions.
+    args.output.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd = os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as log:
         for alert, fixture_reputation in source_alerts(args):
@@ -173,11 +173,6 @@ def preview(args):
         facts = evidence(alert, reputation.enrich(alert) if reputation else fixture_reputation)
         print(json.dumps({"id": alert.alert_id, "state": "pending_review",
                           "evidence": facts, "draft": draft_for(args, facts, key)}, ensure_ascii=True))
-
-
-def metrics(args):
-    print(json.dumps(compare_reviews(load_cases(args.fixtures), read_jsonl(args.manual),
-                                     read_jsonl(args.assisted)), indent=2))
 
 
 def check_enrichment(args):
@@ -241,12 +236,6 @@ def main():
     inspect = actions.add_parser("preview", help="Print pending drafts without approving any verdicts")
     add_source_flags(inspect)
     inspect.set_defaults(handler=preview, engine="baseline")
-
-    report = actions.add_parser("metrics", help="Compare paired, approved manual and assisted reviews")
-    report.add_argument("--fixtures", type=Path, default=FIXTURE)
-    report.add_argument("--manual", type=Path, required=True)
-    report.add_argument("--assisted", type=Path, required=True)
-    report.set_defaults(handler=metrics)
 
     health = actions.add_parser("check-enrichment", help="Verify a reputation API key using public probes")
     health.add_argument("--provider", choices=("vt", "abuseipdb"), required=True)

@@ -263,7 +263,8 @@ async function loadBenchmarks() {
       const matrixWrap = element("div", undefined, "table-wrap");
       matrixWrap.append(matrix);
       const runtime = ["ollama", "hybrid"].includes(record.engine) ? ` · ${record.average_draft_seconds.toFixed(2)} s mean draft time` : "";
-      card.append(element("h2", `${record.model || "Decision rules"} · ${title(record.dataset || "")}`), element("div", score + "%", "bench-number"),
+      const engine = record.engine === "hybrid" ? `Rules + ${record.model}` : record.model || "Decision rules";
+      card.append(element("h2", `${engine} · ${title(record.dataset || "")}`), element("div", score + "%", "bench-number"),
         element("p", `${record.correct} of ${record.alerts} correct${runtime}`), track, matrixWrap);
       if (record.assist) {
         const assist = record.assist;

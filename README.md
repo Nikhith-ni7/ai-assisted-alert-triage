@@ -30,7 +30,7 @@ Python 3.10+ with the standard library is enough. From this directory:
 python3 dashboard_server.py
 ```
 
-Open the printed loopback URL. Switch the alert source between the synthetic queue and the local Wazuh manager, filter alerts, inspect evidence, and explicitly approve a verdict. Decision rules draft the verdict for every alert. **Generate draft** adds the local Ollama model's note, investigation steps and second opinion (`TRIAGE_DASHBOARD_MODEL`, see below), and you can opt into public indicator lookups for an individual Wazuh alert. Approved verdicts are saved locally in `reviews/dashboard.sqlite3`. The Benchmarks view shows recorded verdict accuracy and draft latency. Use the CLI below to collect and compare paired analyst timings.
+Open the printed loopback URL. Switch the alert source between the synthetic queue and the local Wazuh manager, filter alerts, inspect evidence, and explicitly approve a verdict. Decision rules draft the verdict for every alert. **Generate draft** adds the local Ollama model's note, investigation steps and second opinion (`TRIAGE_DASHBOARD_MODEL`, see below), and you can opt into public indicator lookups for an individual Wazuh alert. Approved verdicts are saved locally in `reviews/dashboard.sqlite3`. The Benchmarks view shows recorded verdict accuracy and draft latency.
 
 ### Command-line tools
 
@@ -79,7 +79,7 @@ The model input is a schema projection. Process paths and command lines from Sys
 
 The model has no tools, SIEM write access, or authority to record a verdict. Interactive review can approve a draft, replace the verdict, skip it, or quit. Only an explicit decision writes a final verdict to a new local JSONL review file. Run reviews under an authorized analyst's OS account and keep review files out of Git.
 
-## Measure accuracy and analyst time
+## Benchmark accuracy and draft latency
 
 Two labeled sets:
 - `fixtures/labeled_alerts.jsonl`: 50 alerts from 10 scenario families. **The rules score 50/50 here, which shows this set is too easy to be a real test.** It stays as a regression check.
@@ -106,17 +106,4 @@ python3 cli.py benchmark --fixtures fixtures/hard_alerts.jsonl --engine hybrid -
 
 Hybrid output adds `assist.model_right_rules_wrong` (cases the second opinion catches), `assist.rules_right_model_wrong` (cases where it would mislead) and `assist.model_accuracy`. Both measured runs completed with Ollama on Apple Silicon. Neither second opinion improved on the rules on this set, and the 8B model took longer. Note quality and investigation-step usefulness were not scored.
 
-### Analyst time
-
-To measure time saved, collect **two independent, blinded reviews** of the same alert IDs, one manual and one assisted. Use different analysts or counterbalance review order and don't expose the labels during review. The timer starts when an analyst opens a case and includes drafting and enrichment in assisted mode.
-
-```sh
-python3 cli.py review --source fixture --fixtures fixtures/hard_alerts.jsonl --mode manual \
-  --limit 20 --output reviews/manual.jsonl
-python3 cli.py review --source fixture --fixtures fixtures/hard_alerts.jsonl --mode assisted \
-  --engine hybrid --model qwen3:8b --limit 20 --reverse --output reviews/assisted.jsonl
-python3 cli.py metrics --fixtures fixtures/hard_alerts.jsonl \
-  --manual reviews/manual.jsonl --assisted reviews/assisted.jsonl
-```
-
-No time-saved result is reported until these paired reviews exist.
+On the first 20 hard cases, [rules](results/baseline-first-20.json) and [hybrid](results/hybrid-first-20.json) each scored 15/20. [Qwen alone](results/ollama-first-20.json) scored 7/20. Mean draft latency was 1.88 seconds for hybrid and 1.76 seconds for Qwen alone.

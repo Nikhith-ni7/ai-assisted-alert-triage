@@ -1,7 +1,6 @@
 """Typed evidence projection, draft validation, and benchmark scoring."""
 import ipaddress
 import json
-import math
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -313,34 +312,4 @@ def score_assist(cases, drafts):
         "disagreements": sum(r != m for _, r, m in rows),
         "model_right_rules_wrong": sum(r != label and m == label for label, r, m in rows),
         "rules_right_model_wrong": sum(r == label and m != label for label, r, m in rows),
-    }
-
-
-def compare_reviews(cases, manual, assisted):
-    labels = {case["alert"]["id"]: case["label"] for case in cases}
-    paired = []
-    for mode, rows in (("manual", manual), ("assisted", assisted)):
-        indexed = {}
-        for row in rows:
-            uid = row["id"]
-            seconds = row["elapsed_seconds"]
-            if (row.get("mode") != mode or row.get("state") != "approved"
-                    or uid not in labels or uid in indexed or row["verdict"] not in VERDICTS
-                    or type(seconds) not in (float, int) or not math.isfinite(seconds) or seconds < 0):
-                raise ValueError(f"Invalid {mode} review record")
-            indexed[uid] = row
-        paired.append(indexed)
-    before, after = paired
-    ids = sorted(before.keys() & after.keys())
-    if not ids:
-        raise ValueError("No alerts have approved reviews in both modes")
-    manual_time = mean(before[uid]["elapsed_seconds"] for uid in ids)
-    assisted_time = mean(after[uid]["elapsed_seconds"] for uid in ids)
-    return {
-        "paired_alerts": len(ids),
-        "manual_seconds_per_alert": manual_time,
-        "assisted_seconds_per_alert": assisted_time,
-        "seconds_saved_per_alert": manual_time - assisted_time,
-        "manual_final_accuracy": mean(before[uid]["verdict"] == labels[uid] for uid in ids),
-        "assisted_final_accuracy": mean(after[uid]["verdict"] == labels[uid] for uid in ids),
     }

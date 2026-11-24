@@ -1,6 +1,6 @@
 # Lab validation
 
-Use this guide to collect Windows endpoint evidence, benchmark the hybrid model, and measure analyst time.
+Use this guide to collect Windows endpoint evidence, evaluate draft accuracy, and measure model latency.
 
 ## Completion status on November 24, 2026
 
@@ -8,7 +8,6 @@ Use this guide to collect Windows endpoint evidence, benchmark the hybrid model,
 | --- | --- | --- |
 | Windows agent, Sysmon, Atomic tests, and alert triage | Complete for the two documented tests | Two read-only Atomic test cases ran. The current-user test generated two Wazuh alerts and two hybrid drafts. The analyst approved both current-user alerts as benign lab activity. |
 | Hybrid benchmark with both Qwen models | Complete | Each run produced 19 correct rule verdicts on 25 hard cases. Independent model opinions matched 10 labels with [1.7B](../results/hybrid-qwen3-1.7b-hard.json) and 11 with [8B](../results/hybrid-qwen3-8b-hard.json). |
-| Paired human timing study | Pending | The study requires two reviewers and 20 matched manual and assisted alert timings. Analyst time saved has not been measured. |
 
 ## 1. Verify Windows endpoint telemetry
 
@@ -46,7 +45,7 @@ On November 24, 2026, the Windows 11 ARM guest enrolled in the Wazuh manager. Mi
 | First suggested investigation step | Inspect the parent process, child process, and command line |
 | Human verdict | Pending at the time of capture |
 
-This live case verifies collection and drafting. Its ground truth has not been independently established, so it is excluded from the accuracy and timing studies.
+This live case verifies collection and drafting. Its ground truth has not been independently established, so it is excluded from the accuracy benchmarks.
 
 ### Atomic test observations
 
@@ -68,27 +67,3 @@ python3 cli.py benchmark --fixtures fixtures/hard_alerts.jsonl --engine hybrid -
 ```
 
 Report `assist.model_right_rules_wrong` and `assist.rules_right_model_wrong` separately from final rules accuracy. The model's opinion never replaces the hybrid draft verdict.
-
-## 3. Measure analyst time
-
-Select 20 hard-set alerts before reviewing. Reviewer A reviews the first ten manually and the other ten with assistance. Reviewer B uses the opposite assignment. Use `--limit 10 --offset 0` for the first half and `--limit 10 --offset 10` for the second. Keep reviewers blind to reference labels and to each other's answers. Each reviewer should write to a separate review file for each mode. Combine files within a mode only after checking that each alert was reviewed once in that mode.
-
-Compare the two review logs with `python3 cli.py metrics --fixtures fixtures/hard_alerts.jsonl --manual <manual.jsonl> --assisted <assisted.jsonl>`. Report the paired count, mean seconds per alert in each mode, and each mode's final accuracy.
-
-### Reviewer sessions
-
-Run the following from the repository root in an interactive terminal. Each reviewer completes their two assigned blocks privately. Press Enter only when ready to assess the next case. The CLI measures elapsed time through approval, including model latency in assisted mode.
-
-```sh
-# Reviewer A
-python3 cli.py review --source fixture --fixtures fixtures/hard_alerts.jsonl --offset 0 --limit 10 --mode manual --output reviews/a-manual.jsonl
-python3 cli.py review --source fixture --fixtures fixtures/hard_alerts.jsonl --offset 10 --limit 10 --mode assisted --engine hybrid --model qwen3:1.7b --output reviews/a-assisted.jsonl
-```
-
-```sh
-# Reviewer B
-python3 cli.py review --source fixture --fixtures fixtures/hard_alerts.jsonl --offset 0 --limit 10 --mode assisted --engine hybrid --model qwen3:1.7b --output reviews/b-assisted.jsonl
-python3 cli.py review --source fixture --fixtures fixtures/hard_alerts.jsonl --offset 10 --limit 10 --mode manual --output reviews/b-manual.jsonl
-```
-
-After both reviewers finish, verify ten approved rows per file, combine the manual files and assisted files separately, and check that the metrics report includes all 20 pairs before publishing any time-saved claim.
