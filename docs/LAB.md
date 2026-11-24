@@ -2,6 +2,14 @@
 
 Use this guide to collect Windows endpoint evidence, benchmark the hybrid model, and measure analyst time.
 
+## Completion status on November 24, 2026
+
+| Lab item | Status | Evidence |
+| --- | --- | --- |
+| Windows agent, Sysmon, Atomic tests, and alert triage | Partial | A live setup event reached Wazuh and received a hybrid draft. Human approval is pending. Atomic tests have not been run. |
+| Hybrid benchmark with both Qwen models | Complete | Each run produced 19 correct rule verdicts on 25 hard cases. Independent model opinions matched 10 labels with [1.7B](../results/hybrid-qwen3-1.7b-hard.json) and 11 with [8B](../results/hybrid-qwen3-8b-hard.json). |
+| Paired human timing study | Pending | The study requires two reviewers and 20 matched manual and assisted alert timings. Analyst time saved has not been measured. |
+
 ## 1. Verify Windows endpoint telemetry
 
 Use an isolated Windows 11 VM, a matching Sysmon package, and an enrolled Wazuh Windows agent. Before enrollment, confirm the guest can reach the intended agent ports on a private lab network. The dashboard listens on Mac loopback. In the verified UTM run, two temporary SSH forwards on the private UTM bridge carried agent traffic and enrollment to the manager on TCP 1514 and 1515.
