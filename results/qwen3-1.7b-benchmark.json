@@ -1,0 +1,32 @@
+{
+  "alerts": 50,
+  "correct": 24,
+  "accuracy": 0.48,
+  "confusion_actual_by_predicted": {
+    "malicious": {
+      "malicious": 5,
+      "benign": 0,
+      "needs_review": 15
+    },
+    "benign": {
+      "malicious": 1,
+      "benign": 0,
+      "needs_review": 9
+    },
+    "needs_review": {
+      "malicious": 1,
+      "benign": 0,
+      "needs_review": 19
+    }
+  },
+  "labels": {
+    "benign": 10,
+    "needs_review": 20,
+    "malicious": 20
+  },
+  "engine": "ollama",
+  "model": "qwen3:1.7b",
+  "average_draft_seconds": 1.2132184958400467,
+  "human_time_saved": null,
+  "dataset": "synthetic_labeled_alerts"
+}

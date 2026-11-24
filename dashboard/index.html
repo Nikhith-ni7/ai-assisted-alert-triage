@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Triage Desk</title>
+  <link rel="stylesheet" href="/dashboard.css">
+  <script type="module" src="/dashboard.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a href="/" class="brand"><span class="brand-mark" aria-hidden="true">⌁</span><span>Triage Desk<small>Security operations</small></span></a>
+    <nav aria-label="Workspace">
+      <span class="nav-label">Workspace</span>
+      <button class="nav-link active" data-view="queue" aria-current="page"><span aria-hidden="true">▤</span> Alert queue</button>
+      <button class="nav-link" data-view="benchmark"><span aria-hidden="true">▥</span> Benchmarks</button>
+    </nav>
+    <div class="side-status"><span class="health-dot"></span><div>Local workspace<small>Human approval required</small></div></div>
+  </aside>
+  <main>
+    <header class="topbar">
+      <div class="breadcrumb"><span>Workspace</span><span aria-hidden="true">/</span><strong id="crumb">Alert queue</strong></div>
+      <span class="local-pill"><i class="health-dot"></i> Local only</span>
+    </header>
+    <div class="page">
+      <section id="queue-view">
+        <div class="page-head">
+          <div><h1>Alert queue</h1><p>Review evidence, draft a verdict, and record your decision.</p></div>
+          <div class="head-actions">
+            <label class="sr-only" for="source">Alert source</label>
+            <select id="source"><option value="demo">Synthetic benchmark</option><option value="wazuh">Wazuh manager</option></select>
+            <button id="refresh" type="button" class="button"><span aria-hidden="true">↻</span> Refresh</button>
+          </div>
+        </div>
+        <div id="queue-error" class="message" role="status" hidden></div>
+        <div class="stats" aria-label="Queue totals">
+          <article><span>Total alerts</span><strong id="count-total">—</strong></article>
+          <article><span>Pending review</span><strong id="count-pending">—</strong></article>
+          <article><span>Approved</span><strong id="count-approved">—</strong></article>
+          <article><span>High severity</span><strong id="count-high">—</strong></article>
+        </div>
+        <div class="workbench">
+          <section class="panel queue-panel" aria-labelledby="queue-heading">
+            <div class="panel-head"><h2 id="queue-heading">Alerts</h2><span id="source-note" class="badge neutral">Synthetic data</span></div>
+            <div class="filters">
+              <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Search alerts" placeholder="Search alerts"></label>
+              <select aria-label="Filter severity" id="severity"><option value="">All severities</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="informational">Informational</option><option value="unknown">Unknown</option></select>
+              <select aria-label="Filter review status" id="review-filter"><option value="">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option></select>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th scope="col">Alert</th><th scope="col">Severity</th><th scope="col">Indicators</th><th scope="col">Review</th></tr></thead><tbody id="alerts"></tbody></table></div>
+            <div id="empty" class="empty" hidden>No alerts match these filters.</div>
+            <footer class="table-footer"><span id="pagination-label">Loading alerts…</span><div><button class="icon-button" id="prev" aria-label="Previous page">‹</button><button class="icon-button" id="next" aria-label="Next page">›</button></div></footer>
+          </section>
+          <section class="panel detail-panel" aria-labelledby="detail-heading">
+            <div class="panel-head"><h2 id="detail-heading">Triage details</h2><span class="badge neutral" id="detail-status">Select an alert</span></div>
+            <div id="detail-empty" class="empty">Select an alert to review its evidence.</div>
+            <div id="detail" hidden>
+              <div class="detail-title"><span class="mono" id="detail-id"></span><h3 id="detail-category"></h3><div id="attack-tags" class="tag-row"></div></div>
+              <section class="detail-section"><h4>Evidence</h4><dl id="evidence" class="evidence-list"></dl></section>
+              <section class="detail-section draft-section">
+                <div class="section-head"><h4>Draft verdict</h4><span id="engine-tag" class="badge neutral">Reference policy</span></div>
+                <div class="draft-box"><strong id="draft-verdict"></strong><p id="draft-summary"></p></div>
+                <label id="enrich-label" class="toggle" hidden><input type="checkbox" id="enrich"> Look up public indicators</label>
+                <button id="generate" class="button secondary" type="button">Draft with local AI</button>
+              </section>
+              <section class="detail-section review-section">
+                <label for="final-verdict">Analyst verdict</label>
+                <div class="review-controls">
+                  <select id="final-verdict"><option value="">Choose a verdict</option><option value="needs_review">Needs review</option><option value="benign">Benign</option><option value="malicious">Malicious</option></select>
+                  <button id="approve" type="button" class="button primary" disabled>Approve verdict</button>
+                </div>
+                <p id="review-message" class="review-message" role="status"></p>
+              </section>
+            </div>
+          </section>
+        </div>
+      </section>
+      <section id="benchmark-view" hidden>
+        <div class="page-head"><div><h1>Benchmarks</h1><p>Exact verdict accuracy on the same 50 labeled synthetic alerts.</p></div></div>
+        <div class="benchmark-grid" id="benchmark-cards"></div>
+        <section class="panel benchmark-study"><div class="panel-head"><h2>Analyst time saved</h2><span class="badge pending">Pending study</span></div><p>Measure this with paired manual and assisted reviews. Draft latency measures model runtime.</p></section>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

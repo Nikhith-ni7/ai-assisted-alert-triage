@@ -1,0 +1,31 @@
+{
+  "alerts": 50,
+  "correct": 35,
+  "accuracy": 0.7,
+  "confusion_actual_by_predicted": {
+    "malicious": {
+      "malicious": 5,
+      "benign": 0,
+      "needs_review": 15
+    },
+    "benign": {
+      "malicious": 0,
+      "benign": 10,
+      "needs_review": 0
+    },
+    "needs_review": {
+      "malicious": 0,
+      "benign": 0,
+      "needs_review": 20
+    }
+  },
+  "labels": {
+    "benign": 10,
+    "needs_review": 20,
+    "malicious": 20
+  },
+  "engine": "baseline",
+  "average_draft_seconds": 4.581680041155778e-06,
+  "human_time_saved": null,
+  "dataset": "synthetic_labeled_alerts"
+}
