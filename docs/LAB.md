@@ -6,7 +6,7 @@ Use this guide to collect Windows endpoint evidence, benchmark the hybrid model,
 
 | Lab item | Status | Evidence |
 | --- | --- | --- |
-| Windows agent, Sysmon, Atomic tests, and alert triage | Partial | Two read-only Atomic test cases ran. The current-user test generated two Wazuh alerts and two hybrid drafts. Human sign-off is pending. |
+| Windows agent, Sysmon, Atomic tests, and alert triage | Complete for the two documented tests | Two read-only Atomic test cases ran. The current-user test generated two Wazuh alerts and two hybrid drafts. The analyst approved both current-user alerts as benign lab activity. |
 | Hybrid benchmark with both Qwen models | Complete | Each run produced 19 correct rule verdicts on 25 hard cases. Independent model opinions matched 10 labels with [1.7B](../results/hybrid-qwen3-1.7b-hard.json) and 11 with [8B](../results/hybrid-qwen3-8b-hard.json). |
 | Paired human timing study | Pending | The study requires two reviewers and 20 matched manual and assisted alert timings. Analyst time saved has not been measured. |
 
@@ -54,7 +54,7 @@ On November 24, 2026, two Windows test commands were executed directly in the en
 
 | Test | Observed evidence | Analyst disposition |
 | --- | --- | --- |
-| [T1033 current-user check](https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1033/T1033.yaml), GUID `aab580c7-cc30-4a7c-b5a9-46a29066b022` | At 20:49:08 UTC Wazuh recorded rules 92052 and 92032, alert IDs `1795553348.3114219` and `1795553348.3119797`. The dashboard rules and Qwen 1.7B each returned `needs_review` for both. | Controlled test activity. Human approval pending. |
+| [T1033 current-user check](https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1033/T1033.yaml), GUID `aab580c7-cc30-4a7c-b5a9-46a29066b022` | At 20:49:08 UTC Wazuh recorded rules 92052 and 92032, alert IDs `1795553348.3114219` and `1795553348.3119797`. The dashboard rules and Qwen 1.7B each returned `needs_review` for both. | Both alerts approved by the analyst as benign lab activity at 21:20:30 UTC. |
 | [T1124 PowerShell clock check](https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1124/T1124.yaml), GUID `1d5711d6-655c-4a47-ae9c-6503c74fa877` | Sysmon process creation matched the clock command. No corresponding Wazuh alert was identified in the inspected window. | Telemetry observation only. |
 
 ## 2. Run the hybrid benchmark
