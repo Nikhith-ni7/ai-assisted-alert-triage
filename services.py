@@ -12,7 +12,7 @@ from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, HTTPSHandler, ProxyHandler, Request, build_opener
 from uuid import UUID
 
-from triage import VERDICTS, normalize, validate_draft
+from triage import STEPS, VERDICTS, normalize, validate_draft
 
 ARM = "https://management.azure.com"
 VERSION = "api-version=2025-09-01"
@@ -231,14 +231,19 @@ class Reputation:
 
 
 def draft_messages(facts):
+    catalog = {step: STEPS[step] for step in facts.get("allowed_steps", [])}
     policy = (
-        "Draft a security analyst triage note from the evidence JSON. Do not invent events or "
-        "interpret an alert category or severity as proof. Missing reputation is unknown. "
-        "Reputation alone is not proof of compromise. Return only a JSON object with keys "
-        f"summary, verdict, techniques. Verdict is one of {', '.join(VERDICTS)}. "
-        "Use needs_review for insufficient/conflicting evidence. Use only techniques from "
-        "allowed_techniques and omit unsupported mappings. In the summary describe observed "
-        "evidence, uncertainty and one safe analyst verification step in two short sentences. No account actions."
+        "You assist a SOC analyst. From the evidence JSON, write a short triage note. Do not invent "
+        "events. Category and severity are not proof. Missing reputation is unknown, and reputation "
+        "alone is not proof of compromise. Weigh combinations: a new device, a hosting or VPN IP, "
+        "an admin account, a very new account, or an Office application starting a script host "
+        "matter more together than alone. Documented benign context (verified change, corporate "
+        "egress, user confirmation) can outweigh reputation. Return only a JSON object with keys "
+        f"summary, verdict, techniques, steps. Verdict is one of {', '.join(VERDICTS)}; use needs_review "
+        "for insufficient or conflicting evidence. techniques: only from allowed_techniques. "
+        "steps: 1 to 4 step IDs from this catalog, most important first: "
+        f"{json.dumps(catalog)}. summary: two short sentences on the evidence and the main "
+        "uncertainty. No account actions."
     )
     return [{"role": "system", "content": policy}, {"role": "user", "content": json.dumps(facts)}]
 
@@ -255,7 +260,7 @@ def llm_draft(facts, model, api_key):
         if choice.get("finish_reason") != "stop" or choice["message"].get("refusal"):
             raise ValueError("Model did not complete a draft")
         result = json.loads(choice["message"]["content"])
-        return validate_draft(result, facts["allowed_techniques"])
+        return validate_draft(result, facts["allowed_techniques"], facts.get("allowed_steps", ()))
     except (KeyError, TypeError, IndexError, AttributeError, ValueError):
         raise ValueError("Model response failed validation; no verdict recorded") from None
 
@@ -264,27 +269,64 @@ def ollama_draft(facts, model):
     if not re.fullmatch(r"[a-zA-Z0-9_.:-]{1,80}", model) or re.search(r"(?:-cloud|:cloud)(?:$|:)", model, re.I):
         raise ValueError("Choose a locally installed Ollama model tag")
     allowed = facts["allowed_techniques"]
+    steps = facts.get("allowed_steps", [])
     schema = {
         "type": "object", "additionalProperties": False,
-        "required": ["summary", "verdict", "techniques"],
+        "required": ["summary", "verdict", "techniques", "steps"],
         "properties": {
             "summary": {"type": "string", "minLength": 1, "maxLength": 1200},
             "verdict": {"type": "string", "enum": list(VERDICTS)},
             "techniques": {"type": "array", "maxItems": len(allowed),
                            "items": {"type": "string", **({"enum": allowed} if allowed else {})}},
+            "steps": {"type": "array", "maxItems": min(4, len(steps)),
+                      "items": {"type": "string", **({"enum": steps} if steps else {})}},
         },
     }
     response = request_json(OLLAMA, {}, method="POST", payload={
         "model": model, "stream": False, "think": False, "format": schema,
-        "options": {"temperature": 0, "num_predict": 300, "num_ctx": 4096},
+        "options": {"temperature": 0, "num_predict": 400, "num_ctx": 4096},
         "messages": draft_messages(facts),
     })
     try:
         if response.get("done") is not True or response.get("done_reason") == "length":
             raise ValueError("Model response was incomplete")
-        return validate_draft(json.loads(response["message"]["content"]), allowed)
+        return validate_draft(json.loads(response["message"]["content"]), allowed, steps)
     except (KeyError, TypeError, ValueError):
         raise ValueError("Local model response failed validation; no verdict recorded") from None
+
+
+OFFICE = {"winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe", "onenote.exe", "msaccess.exe"}
+SHELLS = {"powershell.exe", "pwsh.exe", "cmd.exe", "wscript.exe", "cscript.exe", "mshta.exe"}
+LOLBINS = {"rundll32.exe", "regsvr32.exe", "certutil.exe", "procdump.exe", "procdump64.exe",
+           "vssadmin.exe", "wmic.exe", "bitsadmin.exe"}
+BROWSERS = {"chrome.exe", "msedge.exe", "firefox.exe", "brave.exe"}
+
+
+def process_chain(parent, child):
+    """Classify a parent/child pair from Sysmon paths. Only the class leaves this function."""
+    if not isinstance(parent, str) or not isinstance(child, str) or not child:
+        return "none"
+    parent = parent.replace("/", "\\").rsplit("\\", 1)[-1].lower()
+    child = child.replace("/", "\\").rsplit("\\", 1)[-1].lower()
+    if child in SHELLS and parent in OFFICE:
+        return "office_to_script"
+    if child in SHELLS and parent == "explorer.exe":
+        return "explorer_to_shell"
+    if child in SHELLS and parent in BROWSERS:
+        return "browser_to_shell"
+    if child in SHELLS and parent in {"services.exe", "svchost.exe", "wmiprvse.exe"}:
+        return "service_to_shell"
+    if child in LOLBINS and parent in SHELLS:
+        return "script_to_lolbin"
+    return "other"
+
+
+WAZUH_MAPPING = {
+    "T1110.003": "password_spray", "T1621": "mfa_push", "T1114.003": "inbox_rule",
+    "T1204.002": "file_detection", "T1059.001": "suspicious_process",
+    "T1218.005": "suspicious_process", "T1218.011": "suspicious_process",
+    "T1003.001": "credential_access", "T1562.001": "defense_evasion", "T1490": "inhibit_recovery",
+}
 
 
 def wazuh_alert(raw):
@@ -301,12 +343,12 @@ def wazuh_alert(raw):
     if not isinstance(techniques, list):
         techniques = []
     # Map only unambiguous rule tags. Valid-account tags alone do not imply travel.
-    mapping = {"T1110.003": "password_spray", "T1621": "mfa_push",
-               "T1114.003": "inbox_rule", "T1204.002": "file_detection"}
-    candidates = {mapping[t] for t in techniques[:25] if isinstance(t, str) and t in mapping}
+    candidates = {WAZUH_MAPPING[t] for t in techniques[:25] if isinstance(t, str) and t in WAZUH_MAPPING}
     category = next(iter(candidates)) if len(candidates) == 1 else "unknown"
     syscheck = object_value(raw.get("syscheck"))
+    eventdata = object_value(object_value(data.get("win")).get("eventdata"))
     return normalize({"id": raw.get("id"), "category": category, "severity": severity,
+                      "process_chain": process_chain(eventdata.get("parentImage"), eventdata.get("image")),
                       "ips": [data.get("srcip"), data.get("dstip")],
                       "hashes": [data.get("sha256"), data.get("sha1"), data.get("md5"),
                                  syscheck.get("sha256_after"), syscheck.get("sha1_after"),
