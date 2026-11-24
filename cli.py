@@ -10,7 +10,7 @@ import sys
 from time import perf_counter
 
 from services import Reputation, ServiceError, llm_draft, ollama_draft, sentinel_alerts, wazuh_alert, wazuh_docker_alerts
-from triage import VERDICTS, baseline, clean_reputation, compare_reviews, evidence, load_cases, normalize, read_jsonl, score, score_assist
+from triage import VERDICTS, baseline, clean_reputation, combine_hybrid_draft, compare_reviews, evidence, load_cases, normalize, read_jsonl, score, score_assist
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "labeled_alerts.jsonl"
 ENGINES = ("baseline", "ollama", "llm", "hybrid")
@@ -44,15 +44,7 @@ def hybrid_draft(args, facts, key):
         note = llm_draft(facts, args.model, key)
     else:
         note = ollama_draft(facts, args.model)
-    return {
-        "verdict": rules["verdict"],
-        "rule_reason": rules["summary"],
-        "summary": note["summary"],
-        "steps": note["steps"] or rules["steps"],
-        "techniques": rules["techniques"],
-        "model_verdict": note["verdict"],
-        "disagreement": note["verdict"] != rules["verdict"],
-    }
+    return combine_hybrid_draft(rules, note)
 
 
 def draft_for(args, facts, key):
@@ -88,10 +80,10 @@ def benchmark(args):
 
 def source_alerts(args):
     if args.source == "fixture":
-        cases = load_cases(args.fixtures)
+        cases = load_cases(args.fixtures)[args.offset:args.offset + args.limit]
         if args.reverse:
             cases.reverse()
-        for case in cases[:args.limit]:
+        for case in cases:
             yield normalize(case["alert"]), case.get("reputation", [])
     elif args.source == "wazuh":
         if not args.alerts:
@@ -223,7 +215,9 @@ def add_source_flags(command):
     command.add_argument("--resource-group")
     command.add_argument("--workspace")
     command.add_argument("--limit", type=int, choices=range(1, 51), default=10, metavar="1–50")
-    command.add_argument("--reverse", action="store_true", help="Reverse the fixture order")
+    command.add_argument("--offset", type=int, choices=range(50), default=0, metavar="0–49",
+                         help="Skip this many fixture cases before selecting the review set")
+    command.add_argument("--reverse", action="store_true", help="Reverse only the selected fixture cases")
     command.add_argument("--enrich", action="store_true", help="Enable third-party indicator lookups")
     command.add_argument("--lookup-budget", type=int, choices=range(1, 5), default=4, metavar="1–4")
 

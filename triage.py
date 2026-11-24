@@ -178,8 +178,9 @@ def validate_draft(result, allowed, allowed_steps=()):
     if not isinstance(result, dict) or not required <= set(result) <= required | {"steps"}:
         raise ValueError("Unexpected draft schema")
     steps = result.get("steps", [])
-    if (not isinstance(steps, list) or len(steps) > 4 or len(set(steps)) != len(steps)
-            or any(not isinstance(s, str) or s not in allowed_steps for s in steps)):
+    if (not isinstance(steps, list) or len(steps) > 4
+            or any(not isinstance(s, str) or s not in allowed_steps for s in steps)
+            or len(set(steps)) != len(steps)):
         raise ValueError("Invalid investigation steps")
     summary, verdict, techniques = (result[k] for k in ("summary", "verdict", "techniques"))
     if not isinstance(summary, str) or not 1 <= len(summary.strip()) <= 1200:
@@ -245,6 +246,18 @@ def baseline(facts):
             reason = "Reputation flags an indicator, but reputation alone is not proof. Verify the link."
     return {"verdict": verdict, "summary": reason, "techniques": facts["allowed_techniques"],
             "steps": facts["allowed_steps"][:2]}
+
+
+def combine_hybrid_draft(rules, note):
+    return {
+        "verdict": rules["verdict"],
+        "rule_reason": rules["summary"],
+        "summary": note["summary"],
+        "steps": note["steps"] or rules["steps"],
+        "techniques": rules["techniques"],
+        "model_verdict": note["verdict"],
+        "disagreement": note["verdict"] != rules["verdict"],
+    }
 
 
 def read_jsonl(path):

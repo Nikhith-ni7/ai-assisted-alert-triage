@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from cli import FIXTURE
 from services import Reputation, ServiceError, ollama_draft, wazuh_docker_alerts
-from triage import VERDICTS, baseline, evidence, load_cases, normalize
+from triage import STEPS, VERDICTS, baseline, combine_hybrid_draft, evidence, load_cases, normalize
 
 ROOT = Path(__file__).resolve().parent
 ASSETS = {
@@ -95,7 +95,8 @@ class Dashboard(ThreadingHTTPServer):
         else:
             draft, engine = baseline(facts), "baseline"
         return {"facts": facts, "draft": draft, "engine": engine,
-                "ips": alert.ips, "hashes": alert.hashes}
+                "ips": alert.ips, "hashes": alert.hashes,
+                "step_labels": [STEPS[step] for step in draft["steps"]]}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -178,12 +179,7 @@ class Handler(BaseHTTPRequestHandler):
                             self.server.reputation = Reputation()
                         recorded = self.server.reputation.enrich(alert)
                     facts = evidence(alert, recorded)
-                    # Rules keep the verdict; the model writes the note and steps and gives a second opinion.
-                    rules = baseline(facts)
-                    note = ollama_draft(facts, MODEL)
-                    draft = {**note, "verdict": rules["verdict"], "techniques": rules["techniques"],
-                             "steps": note["steps"] or rules["steps"], "model_verdict": note["verdict"],
-                             "rule_reason": rules["summary"]}
+                    draft = combine_hybrid_draft(baseline(facts), ollama_draft(facts, MODEL))
                     self.server.drafts[(source, alert_id)] = (facts, draft, f"rules + {MODEL}")
                 finally:
                     self.server.draft_lock.release()

@@ -39,6 +39,6 @@ Report `assist.model_right_rules_wrong` and `assist.rules_right_model_wrong` sep
 
 ## 3. Measure analyst time
 
-Select 20 hard-set alerts before reviewing. Reviewer A reviews the first ten manually and the other ten with assistance. Reviewer B uses the opposite assignment. Keep reviewers blind to reference labels and to each other's answers. Each reviewer should write to a separate review file for each mode. Combine files within a mode only after checking that each alert was reviewed once in that mode.
+Select 20 hard-set alerts before reviewing. Reviewer A reviews the first ten manually and the other ten with assistance. Reviewer B uses the opposite assignment. Use `--limit 10 --offset 0` for the first half and `--limit 10 --offset 10` for the second. Keep reviewers blind to reference labels and to each other's answers. Each reviewer should write to a separate review file for each mode. Combine files within a mode only after checking that each alert was reviewed once in that mode.
 
 Compare the two review logs with `python3 cli.py metrics --fixtures fixtures/hard_alerts.jsonl --manual <manual.jsonl> --assisted <assisted.jsonl>`. Report the paired count, mean seconds per alert in each mode, and each mode's final accuracy.

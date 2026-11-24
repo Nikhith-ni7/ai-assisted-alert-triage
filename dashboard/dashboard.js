@@ -107,7 +107,9 @@ function renderDetail() {
   $("model-opinion").hidden = !opinion;
   $("model-opinion").textContent = opinion ?
     `Model opinion: ${title(opinion)}${opinion !== details.draft.verdict ? " (disagrees with the rules: check before approving)" : ""}` : "";
-  $("draft-steps").replaceChildren(...(details.draft.steps || []).map((step) => element("li", title(step))));
+  $("rule-reason").hidden = !details.draft.rule_reason;
+  $("rule-reason").textContent = details.draft.rule_reason ? "Rule reason: " + details.draft.rule_reason : "";
+  $("draft-steps").replaceChildren(...details.step_labels.map((step) => element("li", step)));
   $("enrich-label").hidden = view.source === "demo" || !!row.review;
   $("final-verdict").value = row.review?.verdict || details.draft.verdict;
   $("final-verdict").disabled = !!row.review || view.writing;
@@ -260,9 +262,13 @@ async function loadBenchmarks() {
       matrix.append(matrixHead, matrixBody);
       const matrixWrap = element("div", undefined, "table-wrap");
       matrixWrap.append(matrix);
-      const runtime = record.engine === "ollama" ? ` · ${record.average_draft_seconds.toFixed(2)} s mean draft time` : "";
+      const runtime = ["ollama", "hybrid"].includes(record.engine) ? ` · ${record.average_draft_seconds.toFixed(2)} s mean draft time` : "";
       card.append(element("h2", `${record.model || "Decision rules"} · ${title(record.dataset || "")}`), element("div", score + "%", "bench-number"),
         element("p", `${record.correct} of ${record.alerts} correct${runtime}`), track, matrixWrap);
+      if (record.assist) {
+        const assist = record.assist;
+        card.append(element("p", `Model opinion: ${Math.round(assist.model_accuracy * 100)}% accurate · ${assist.model_right_rules_wrong} rule misses caught · ${assist.rules_right_model_wrong} correct rule calls challenged`));
+      }
       return card;
     });
     $("benchmark-cards").replaceChildren(...cards);

@@ -134,6 +134,20 @@ class SentinelTests(unittest.TestCase):
 
 
 class ReviewTests(unittest.TestCase):
+    def test_fixture_review_order_uses_the_same_selected_cases(self):
+        fixture = cli.FIXTURE.parent / "hard_alerts.jsonl"
+        args = argparse.Namespace(source="fixture", fixtures=fixture, limit=10, offset=10, reverse=False)
+        first = [alert.alert_id for alert, _ in cli.source_alerts(args)]
+        self.assertEqual(len(first), 10)
+        args.reverse = True
+        self.assertEqual([alert.alert_id for alert, _ in cli.source_alerts(args)], first[::-1])
+
+    def test_nested_model_step_is_rejected_cleanly(self):
+        with self.assertRaises(ValueError):
+            validate_draft({"summary": "Review it", "verdict": "needs_review",
+                            "techniques": [], "steps": [{"injected": True}]}, [])
+
+
     def test_dotenv_aliases_and_environment_precedence(self):
         with tempfile.TemporaryDirectory() as root:
             local = Path(root) / ".env"
