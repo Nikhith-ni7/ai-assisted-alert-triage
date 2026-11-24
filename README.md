@@ -90,8 +90,9 @@ Labels on both sets were written by me, the same person who wrote the rules. A s
 | Run | Set | Result |
 | --- | --- | --- |
 | Decision rules | Original 50 | [50/50](results/baseline-benchmark.json) |
-| Decision rules | Hard 25 | [19/25 (76%)](results/baseline-hard-benchmark.json). All 6 misses go to `needs_review`; no malicious case is closed as benign |
-| Hybrid (rules + `qwen3:8b`) | Hard 25 | Not yet run, see below |
+| Decision rules | Hard 25 | [19/25 (76%)](results/baseline-hard-benchmark.json). All 6 misses go to `needs_review`; no malicious case received a benign rules verdict |
+| Hybrid with `qwen3:1.7b` | Hard 25 | [Rules 19/25, opinion 10/25 (40%)](results/hybrid-qwen3-1.7b-hard.json). Caught 0 rule misses, challenged 9 correct rule calls. Mean draft time 1.86 s. |
+| Hybrid with `qwen3:8b` | Hard 25 | [Rules 19/25, opinion 11/25 (44%)](results/hybrid-qwen3-8b-hard.json). Caught 0 rule misses, challenged 8 correct rule calls. Mean draft time 6.55 s. |
 | Previous version: Qwen3 1.7B deciding the verdict alone | Original 50 | [24/50](results/qwen3-1.7b-benchmark.json), recorded before the evidence and rules update |
 | Local Wazuh Docker → Ollama | 3 real manager alerts | 3 valid drafts, pending human review (no endpoint agent yet) |
 
@@ -103,7 +104,7 @@ python3 cli.py benchmark --fixtures fixtures/hard_alerts.jsonl --engine hybrid -
 python3 cli.py benchmark --fixtures fixtures/hard_alerts.jsonl --engine hybrid --model qwen3:1.7b
 ```
 
-Hybrid output adds `assist.model_right_rules_wrong` (cases the second opinion catches), `assist.rules_right_model_wrong` (cases where it would mislead) and `assist.model_accuracy`. Save each run to `results/` and update this table with the numbers you actually get.
+Hybrid output adds `assist.model_right_rules_wrong` (cases the second opinion catches), `assist.rules_right_model_wrong` (cases where it would mislead) and `assist.model_accuracy`. Both measured runs completed with Ollama on Apple Silicon. Neither second opinion improved on the rules on this set, and the 8B model took longer. Note quality and investigation-step usefulness were not scored.
 
 ### Analyst time
 

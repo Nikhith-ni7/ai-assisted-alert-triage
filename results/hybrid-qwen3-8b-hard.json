@@ -1,0 +1,90 @@
+{
+  "alerts": 25,
+  "correct": 19,
+  "accuracy": 0.76,
+  "confusion_actual_by_predicted": {
+    "malicious": {
+      "malicious": 3,
+      "benign": 0,
+      "needs_review": 5
+    },
+    "benign": {
+      "malicious": 0,
+      "benign": 6,
+      "needs_review": 1
+    },
+    "needs_review": {
+      "malicious": 0,
+      "benign": 0,
+      "needs_review": 10
+    }
+  },
+  "labels": {
+    "needs_review": 10,
+    "benign": 7,
+    "malicious": 8
+  },
+  "malicious_closed_as_benign": 0,
+  "by_category": {
+    "credential_access": {
+      "alerts": 2,
+      "correct": 2
+    },
+    "defense_evasion": {
+      "alerts": 2,
+      "correct": 1
+    },
+    "file_detection": {
+      "alerts": 2,
+      "correct": 1
+    },
+    "impossible_travel": {
+      "alerts": 1,
+      "correct": 1
+    },
+    "inbox_rule": {
+      "alerts": 2,
+      "correct": 2
+    },
+    "inhibit_recovery": {
+      "alerts": 2,
+      "correct": 2
+    },
+    "mfa_push": {
+      "alerts": 2,
+      "correct": 1
+    },
+    "new_country": {
+      "alerts": 3,
+      "correct": 1
+    },
+    "password_spray": {
+      "alerts": 3,
+      "correct": 3
+    },
+    "risky_signin": {
+      "alerts": 2,
+      "correct": 1
+    },
+    "suspicious_process": {
+      "alerts": 3,
+      "correct": 3
+    },
+    "unknown": {
+      "alerts": 1,
+      "correct": 1
+    }
+  },
+  "assist": {
+    "model_accuracy": 0.44,
+    "disagreements": 8,
+    "model_right_rules_wrong": 0,
+    "rules_right_model_wrong": 8
+  },
+  "provider": "ollama",
+  "engine": "hybrid",
+  "model": "qwen3:8b",
+  "average_draft_seconds": 6.551239745000057,
+  "human_time_saved": null,
+  "dataset": "hard_alerts"
+}
