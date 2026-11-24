@@ -10,12 +10,21 @@ import sys
 from time import perf_counter
 
 from services import Reputation, ServiceError, llm_draft, ollama_draft, sentinel_alerts, wazuh_alert, wazuh_docker_alerts
-from triage import VERDICTS, baseline, clean_reputation, compare_reviews, evidence, load_cases, normalize, read_jsonl, score
+from triage import VERDICTS, baseline, clean_reputation, compare_reviews, evidence, load_cases, normalize, read_jsonl, score, score_assist
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "labeled_alerts.jsonl"
+ENGINES = ("baseline", "ollama", "llm", "hybrid")
 
 
 def model_key(args):
+    if args.engine == "hybrid":
+        if not args.model:
+            raise ValueError("Provide --model for the hybrid engine (Ollama tag, or OpenAI model with --provider openai)")
+        if getattr(args, "provider", "ollama") == "openai":
+            if not os.getenv("OPENAI_API_KEY"):
+                raise ValueError("Set OPENAI_API_KEY for --provider openai")
+            return os.environ["OPENAI_API_KEY"]
+        return None
     if args.engine == "ollama":
         if not args.model:
             raise ValueError("Provide --model with a locally installed Ollama model tag")
@@ -27,9 +36,30 @@ def model_key(args):
     return os.environ["OPENAI_API_KEY"]
 
 
+def hybrid_draft(args, facts, key):
+    """Rules decide the verdict. The model writes the note, picks investigation steps and
+    gives its own verdict, which is shown to the analyst only as a second opinion."""
+    rules = baseline(facts)
+    if getattr(args, "provider", "ollama") == "openai":
+        note = llm_draft(facts, args.model, key)
+    else:
+        note = ollama_draft(facts, args.model)
+    return {
+        "verdict": rules["verdict"],
+        "rule_reason": rules["summary"],
+        "summary": note["summary"],
+        "steps": note["steps"] or rules["steps"],
+        "techniques": rules["techniques"],
+        "model_verdict": note["verdict"],
+        "disagreement": note["verdict"] != rules["verdict"],
+    }
+
+
 def draft_for(args, facts, key):
     if args.engine == "baseline":
         return baseline(facts)
+    if args.engine == "hybrid":
+        return hybrid_draft(args, facts, key)
     if args.engine == "ollama":
         return ollama_draft(facts, args.model)
     return llm_draft(facts, args.model, key)
@@ -44,12 +74,15 @@ def benchmark(args):
         alert = normalize(case["alert"])
         drafts[alert.alert_id] = draft_for(args, evidence(alert, case.get("reputation", [])), key)
     report = score(cases, drafts)
+    if args.engine == "hybrid":
+        report["assist"] = score_assist(cases, drafts)
+        report["provider"] = args.provider
     report["engine"] = args.engine
     if args.model and args.engine != "baseline":
         report["model"] = args.model
     report["average_draft_seconds"] = (perf_counter() - started) / len(cases)
     report["human_time_saved"] = None
-    report["dataset"] = "synthetic_labeled_alerts"
+    report["dataset"] = Path(args.fixtures).stem
     print(json.dumps(report, indent=2))
 
 
@@ -99,7 +132,7 @@ def review(args):
     if not sys.stdin.isatty():
         raise ValueError("Review requires an interactive terminal")
     if not args.engine and args.mode == "assisted":
-        raise ValueError("Choose --engine baseline, ollama or llm for assisted review")
+        raise ValueError("Choose --engine baseline, hybrid, ollama or llm for assisted review")
     if args.mode == "manual" and (args.engine or args.enrich):
         raise ValueError("Manual review does not use a draft engine or live enrichment")
     if args.enrich and args.source == "fixture":
@@ -178,8 +211,10 @@ def check_enrichment(args):
 
 def add_source_flags(command):
     command.add_argument("--source", choices=("wazuh", "wazuh-docker", "sentinel", "fixture"), required=True)
-    command.add_argument("--engine", choices=("baseline", "ollama", "llm"))
+    command.add_argument("--engine", choices=ENGINES)
     command.add_argument("--model")
+    command.add_argument("--provider", choices=("ollama", "openai"), default="ollama",
+                         help="Model backend for --engine hybrid")
     command.add_argument("--fixtures", type=Path, default=FIXTURE)
     command.add_argument("--alerts", type=Path)
     command.add_argument("--docker-context", default="colima-wazuh")
@@ -196,9 +231,10 @@ def add_source_flags(command):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     actions = parser.add_subparsers(dest="action", required=True)
-    evaluate = actions.add_parser("benchmark", help="Score draft verdicts on 50 synthetic alerts")
-    evaluate.add_argument("--engine", choices=("baseline", "ollama", "llm"), default="baseline")
+    evaluate = actions.add_parser("benchmark", help="Score draft verdicts on a labeled alert set")
+    evaluate.add_argument("--engine", choices=ENGINES, default="baseline")
     evaluate.add_argument("--model")
+    evaluate.add_argument("--provider", choices=("ollama", "openai"), default="ollama")
     evaluate.add_argument("--fixtures", type=Path, default=FIXTURE)
     evaluate.set_defaults(handler=benchmark)
 
