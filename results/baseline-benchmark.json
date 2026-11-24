@@ -1,12 +1,12 @@
 {
   "alerts": 50,
-  "correct": 35,
-  "accuracy": 0.7,
+  "correct": 50,
+  "accuracy": 1.0,
   "confusion_actual_by_predicted": {
     "malicious": {
-      "malicious": 5,
+      "malicious": 20,
       "benign": 0,
-      "needs_review": 15
+      "needs_review": 0
     },
     "benign": {
       "malicious": 0,
@@ -24,8 +24,39 @@
     "needs_review": 20,
     "malicious": 20
   },
+  "malicious_closed_as_benign": 0,
+  "by_category": {
+    "file_detection": {
+      "alerts": 5,
+      "correct": 5
+    },
+    "impossible_travel": {
+      "alerts": 5,
+      "correct": 5
+    },
+    "inbox_rule": {
+      "alerts": 10,
+      "correct": 10
+    },
+    "mfa_push": {
+      "alerts": 10,
+      "correct": 10
+    },
+    "new_country": {
+      "alerts": 5,
+      "correct": 5
+    },
+    "password_spray": {
+      "alerts": 10,
+      "correct": 10
+    },
+    "risky_signin": {
+      "alerts": 5,
+      "correct": 5
+    }
+  },
   "engine": "baseline",
-  "average_draft_seconds": 4.581680041155778e-06,
+  "average_draft_seconds": 1.3963860000103524e-05,
   "human_time_saved": null,
-  "dataset": "synthetic_labeled_alerts"
+  "dataset": "labeled_alerts"
 }

@@ -28,5 +28,6 @@
   "model": "qwen3:1.7b",
   "average_draft_seconds": 1.2132184958400467,
   "human_time_saved": null,
-  "dataset": "synthetic_labeled_alerts"
+  "dataset": "labeled_alerts (previous version)",
+  "note": "Recorded before the evidence and rules update; rerun with --engine hybrid."
 }
