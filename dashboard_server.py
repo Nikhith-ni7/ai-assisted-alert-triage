@@ -22,7 +22,7 @@ ASSETS = {
     "/dashboard.js": ("dashboard.js", "text/javascript; charset=utf-8"),
 }
 SOURCES = {"demo", "wazuh"}
-MODEL = "qwen3:1.7b"
+MODEL = os.getenv("TRIAGE_DASHBOARD_MODEL", "qwen3:1.7b")
 
 
 class ReviewStore:
@@ -129,8 +129,7 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/config":
             return self.reply(200, {"csrf": self.server.token, "model": MODEL})
         if url.path == "/api/benchmarks":
-            results = [json.loads((ROOT / "results" / name).read_text()) for name in (
-                "baseline-benchmark.json", "qwen3-1.7b-benchmark.json")]
+            results = [json.loads(path.read_text()) for path in sorted((ROOT / "results").glob("*.json"))]
             return self.reply(200, results)
         args = parse_qs(url.query)
         source = args.get("source", ["demo"])[0]
@@ -179,8 +178,13 @@ class Handler(BaseHTTPRequestHandler):
                             self.server.reputation = Reputation()
                         recorded = self.server.reputation.enrich(alert)
                     facts = evidence(alert, recorded)
-                    draft = ollama_draft(facts, MODEL)
-                    self.server.drafts[(source, alert_id)] = (facts, draft, MODEL)
+                    # Rules keep the verdict; the model writes the note and steps and gives a second opinion.
+                    rules = baseline(facts)
+                    note = ollama_draft(facts, MODEL)
+                    draft = {**note, "verdict": rules["verdict"], "techniques": rules["techniques"],
+                             "steps": note["steps"] or rules["steps"], "model_verdict": note["verdict"],
+                             "rule_reason": rules["summary"]}
+                    self.server.drafts[(source, alert_id)] = (facts, draft, f"rules + {MODEL}")
                 finally:
                     self.server.draft_lock.release()
                 return self.reply(200, self.server.detail(source, alert_id))
